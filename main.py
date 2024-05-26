@@ -1,4 +1,5 @@
 import random
+import threading
 import time
 from tkinter import *
 from tkmacosx import *
@@ -7,8 +8,8 @@ import pygame
 
 # music
 pygame.mixer.init()
-# music = pygame.mixer.music.load("Sounds/music.mp3")
-# pygame.mixer.music.play(-1)
+music = pygame.mixer.music.load("Sounds/music.mp3")
+pygame.mixer.music.play(-1)
 
 # window creation
 window = Tk()
@@ -19,6 +20,9 @@ window.configure(bg="black")
 # setting game canvas
 game_canvas = Canvas(window, bg="#6eadff", width=400, height=300, highlightthickness=0)
 game_canvas.place(relx=0.5, rely=0.4, anchor=CENTER)
+
+global GOAL_NUM, SHOOT_COUNT
+GOAL_NUM, SHOOT_COUNT = 0, 0
 
 
 # ball class
@@ -64,6 +68,7 @@ class Ball:
         shoot_button["state"] = "normal"
 
     def shootBall(self):
+        global GOAL_NUM, SHOOT_COUNT
         random_block = random.randint(1,6)
         x = 50 + (50 * (random_block - 1))
 
@@ -76,10 +81,23 @@ class Ball:
 
         self.moveBall(random_goal)
 
-        if random_goal == random_block:
-            print(f"NO GOAL: Blocked: {random_block}")
-        else:
-            print(f"GOAL: Blocked: {random_block} Goal: {random_goal}")
+        random_penalty = random.randint(0,1)
+        penalty_gol_num = 0
+
+        if SHOOT_COUNT < 7:
+            if random_goal == random_block:
+                pass
+            else:
+                GOAL_NUM += 1
+                score_label['text'] = f"SCORE: {GOAL_NUM}"
+
+            if random_penalty == 1:
+                GOAL_NUM = penalty_gol_num
+
+            SHOOT_COUNT += 1
+
+        elif SHOOT_COUNT >= 7:
+            shoot_button["state"] = "disabled"
 
         game_canvas.delete(blocked_area)
 
@@ -104,15 +122,34 @@ field = game_canvas.create_image((0, 35), image=goal_field_tk, anchor=NW)
 goalie = game_canvas.create_image((162, 160), image=goalie_tk, anchor=NW)
 ball = game_canvas.create_image((180, 250), image=ball_tk, anchor=NW)
 
+# goalie animation thread
+def goalieAnimation():
+    while True:
+        game_canvas.move(goalie, 0, 2)
+        time.sleep(0.2)
+        window.update()
+        game_canvas.move(goalie, 0, 2)
+        time.sleep(0.2)
+        window.update()
+        game_canvas.move(goalie, 0, -2)
+        time.sleep(0.2)
+        window.update()
+        game_canvas.move(goalie, 0, -2)
+        time.sleep(0.2)
+        window.update()
+
+idle_anim_thread = threading.Thread(target=goalieAnimation)
+idle_anim_thread.start()
+
 # ball object from class Ball
 ball = Ball(ball)
 
 # shoot button
-shoot_button = Button(window, text="Shoot", font=("retro gaming", 14), bg="blue", fg="white", focuscolor="blue", borderless=1, borderwidth=2, highlightthickness=3, relief="raised", command=ball.shootBall)
+shoot_button = Button(window, text="SHOOT", font=("retro gaming", 14), bg="blue", fg="white", focuscolor="blue", borderless=1, borderwidth=2, highlightthickness=3, relief="raised", command=ball.shootBall)
 shoot_button.place(relx=0.5, rely=0.8, anchor=CENTER)
 
 # score text (label)
-score_label = Label(window, text="SCORE: 0", font=("retro gaming", 14), bg="black", fg="white")
+score_label = Label(window, text=f"SCORE: {GOAL_NUM}", font=("retro gaming", 14), bg="black", fg="white")
 score_label.place(relx=0.3, rely=0.1, anchor=CENTER)
 
 # run window
