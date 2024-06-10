@@ -13,10 +13,7 @@ pygame.mixer.init()
 music = pygame.mixer.music.load("Sounds/music.mp3")
 pygame.mixer.music.play(-1)
 
-# serial
 os.system("clear")
-
-ser = serial.Serial('/dev/cu.usbmodem11301', 115200)
 
 # window creation
 window = Tk()
@@ -91,34 +88,46 @@ class Ball:
 
         self.moveBall(random_goal)
 
-        random_penalty = random.randint(0,3)
-        print(random_penalty)
+        random_penalty = random.randint(0,1)
 
-        if SHOOT_COUNT < 7:
+        if SHOOT_COUNT < 7 or GOAL_NUM < 7:
             if random_goal == random_block:
                 pass
             else:
                 GOAL_NUM = int(GOAL_NUM) + 1
                 score_label['text'] = f"SCORE: {GOAL_NUM}"
 
-            if random_penalty == 1:
-                # send data
-                message = str(GOAL_NUM)
-                ser.write(bytes(message + '\n\r', 'utf-8'))
-                time.sleep(0.05)
+                if random_penalty == 1:
+                    # send data
+                    GOAL_NUM -= 1
+                    ser = serial.Serial('/dev/cu.usbmodem11401', 115200)
+                    message = str(GOAL_NUM)
+                    ser.write(bytes(message + '\n\r', 'utf-8'))
+                    time.sleep(0.05)
 
-                PENALTY = ser.readline().decode('utf-8').strip()
+                    data = ser.readline().decode('utf-8').strip()
+                    print(data)
+                    time.sleep(0.05)
 
-                ser.close()
+                    PENALTY = ser.readline().decode('utf-8').strip()
+                    print(PENALTY)
+                    time.sleep(0.05)
 
-                sound = pygame.mixer.Sound("Sounds/synth.wav")
-                pygame.mixer.Sound.play(sound)
-                GOAL_NUM = PENALTY
-                score_label['text'] = f"SCORE: {GOAL_NUM}"
+                    ser.close()
+
+                    sound = pygame.mixer.Sound("Sounds/synth.wav")
+                    pygame.mixer.Sound.play(sound)
+
+                    GOAL_NUM = int(PENALTY)
+
+
+                    score_label['text'] = f"SCORE: {GOAL_NUM}"
+
 
             SHOOT_COUNT += 1
 
-        elif SHOOT_COUNT >= 7:
+
+        elif SHOOT_COUNT >= 7 or GOAL_NUM == 7:
             if TEAM_DONE == 0:
                 shoot_button["state"] = "disabled"
                 teamSwitchAnimation()
