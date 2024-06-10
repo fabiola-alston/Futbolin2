@@ -4,12 +4,19 @@ import time
 from tkinter import *
 from tkmacosx import *
 from PIL import Image, ImageTk
+import os
 import pygame
+import serial
 
 # music
 pygame.mixer.init()
 music = pygame.mixer.music.load("Sounds/music.mp3")
 pygame.mixer.music.play(-1)
+
+# serial
+os.system("clear")
+
+ser = serial.Serial('/dev/cu.usbmodem11301', 115200)
 
 # window creation
 window = Tk()
@@ -23,6 +30,8 @@ game_canvas.place(relx=0.5, rely=0.4, anchor=CENTER)
 
 global GOAL_NUM, SHOOT_COUNT
 GOAL_NUM, SHOOT_COUNT = 0, 0
+TEAM_DONE = 0
+PENALTY = 0
 
 
 # ball class
@@ -68,7 +77,7 @@ class Ball:
         shoot_button["state"] = "normal"
 
     def shootBall(self):
-        global GOAL_NUM, SHOOT_COUNT
+        global GOAL_NUM, SHOOT_COUNT, TEAM_DONE, PENALTY
         random_block = random.randint(1,6)
         x = 50 + (50 * (random_block - 1))
 
@@ -79,29 +88,63 @@ class Ball:
 
         random_goal = random.randint(1, 6)
 
+
         self.moveBall(random_goal)
 
-        random_penalty = random.randint(0,1)
-        penalty_gol_num = 0
+        random_penalty = random.randint(0,3)
+        print(random_penalty)
 
         if SHOOT_COUNT < 7:
             if random_goal == random_block:
                 pass
             else:
-                GOAL_NUM += 1
+                GOAL_NUM = int(GOAL_NUM) + 1
                 score_label['text'] = f"SCORE: {GOAL_NUM}"
 
             if random_penalty == 1:
-                GOAL_NUM = penalty_gol_num
+                # send data
+                message = str(GOAL_NUM)
+                ser.write(bytes(message + '\n\r', 'utf-8'))
+                time.sleep(0.05)
+
+                PENALTY = ser.readline().decode('utf-8').strip()
+
+                ser.close()
+
+                sound = pygame.mixer.Sound("Sounds/synth.wav")
+                pygame.mixer.Sound.play(sound)
+                GOAL_NUM = PENALTY
+                score_label['text'] = f"SCORE: {GOAL_NUM}"
 
             SHOOT_COUNT += 1
 
         elif SHOOT_COUNT >= 7:
-            shoot_button["state"] = "disabled"
+            if TEAM_DONE == 0:
+                shoot_button["state"] = "disabled"
+                teamSwitchAnimation()
+                SHOOT_COUNT = 0
+                TEAM_DONE = 1
+                GOAL_NUM = 0
+                score_label['text'] = f"SCORE: {GOAL_NUM}"
+                team_label["text"] = "TEAM 2"
+                team_label["fg"] = "blue"
+                shoot_button["state"] = "normal"
+
+            elif TEAM_DONE == 1:
+                shoot_button["state"] = "disabled"
+
+
 
         game_canvas.delete(blocked_area)
 
 
+def teamSwitchAnimation():
+    switch_label = Label(game_canvas, text=f"SWITCH", font=("retro gaming", 16), padx=5, pady=3, bg="black", fg="white")
+    switch_label.place(relx=0.5, rely=0.5, anchor=CENTER)
+    window.update()
+    time.sleep(2)
+    switch_label.destroy()
+    window.update()
 
 # goal field image load
 goal_field_img = Image.open("Images/goal_field.png")
@@ -151,6 +194,10 @@ shoot_button.place(relx=0.5, rely=0.8, anchor=CENTER)
 # score text (label)
 score_label = Label(window, text=f"SCORE: {GOAL_NUM}", font=("retro gaming", 14), bg="black", fg="white")
 score_label.place(relx=0.3, rely=0.1, anchor=CENTER)
+
+# team indicator
+team_label = Label(window, text=f"TEAM 1", font=("retro gaming", 14), bg="black", fg="red")
+team_label.place(relx=0.4, rely=0.1, anchor=CENTER)
 
 # run window
 window.mainloop()
