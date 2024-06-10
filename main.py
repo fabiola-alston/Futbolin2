@@ -27,7 +27,7 @@ game_canvas.place(relx=0.5, rely=0.4, anchor=CENTER)
 
 global GOAL_NUM, SHOOT_COUNT
 GOAL_NUM, SHOOT_COUNT = 0, 0
-TEAM_DONE = 0
+TEAM_DONE = 1
 PENALTY = 0
 
 
@@ -90,18 +90,19 @@ class Ball:
 
         random_penalty = random.randint(0,1)
 
-        if SHOOT_COUNT < 7 or GOAL_NUM < 7:
+        if SHOOT_COUNT < 7 and GOAL_NUM < 7:
             if random_goal == random_block:
                 pass
             else:
                 GOAL_NUM = int(GOAL_NUM) + 1
                 score_label['text'] = f"SCORE: {GOAL_NUM}"
 
-                if random_penalty == 1:
+                if random_penalty == 1 and GOAL_NUM < 7:
                     # send data
                     GOAL_NUM -= 1
-                    ser = serial.Serial('/dev/cu.usbmodem11401', 115200)
-                    message = str(GOAL_NUM)
+                    ser = serial.Serial('/dev/cu.usbmodem1301', 115200)
+                    message = f"{TEAM_DONE}{GOAL_NUM}"
+                    print(message)
                     ser.write(bytes(message + '\n\r', 'utf-8'))
                     time.sleep(0.05)
 
@@ -128,18 +129,18 @@ class Ball:
 
 
         elif SHOOT_COUNT >= 7 or GOAL_NUM == 7:
-            if TEAM_DONE == 0:
+            if TEAM_DONE == 1:
                 shoot_button["state"] = "disabled"
                 teamSwitchAnimation()
                 SHOOT_COUNT = 0
-                TEAM_DONE = 1
+                TEAM_DONE = 2
                 GOAL_NUM = 0
                 score_label['text'] = f"SCORE: {GOAL_NUM}"
                 team_label["text"] = "TEAM 2"
                 team_label["fg"] = "blue"
                 shoot_button["state"] = "normal"
 
-            elif TEAM_DONE == 1:
+            elif TEAM_DONE == 2:
                 shoot_button["state"] = "disabled"
 
 
